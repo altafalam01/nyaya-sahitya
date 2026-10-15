@@ -21,6 +21,10 @@ class Settings:
     index_dir: Path
     embed_model: str
     embed_batch_size: int
+    rerank_model: str
+    dense_candidates: int
+    bm25_candidates: int
+    rerank_top: int
     anthropic_api_key: str
     user_agent: str
     download_delay_seconds: float
@@ -42,6 +46,10 @@ def load_settings() -> Settings:
         index_dir=_path("CHROMA_DIR", "data/index"),
         embed_model=os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-small"),
         embed_batch_size=int(os.getenv("EMBED_BATCH_SIZE", "16")),
+        rerank_model=os.getenv("RERANK_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"),
+        dense_candidates=int(os.getenv("DENSE_CANDIDATES", "50")),
+        bm25_candidates=int(os.getenv("BM25_CANDIDATES", "50")),
+        rerank_top=int(os.getenv("RERANK_TOP", "20")),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
         user_agent=os.getenv("USER_AGENT", "NyayaSahityaBot/0.1 (legal-research; non-commercial)"),
         download_delay_seconds=float(os.getenv("DOWNLOAD_DELAY_SECONDS", "5")),

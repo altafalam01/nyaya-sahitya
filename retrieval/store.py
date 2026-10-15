@@ -77,6 +77,13 @@ class Store:
     def delete_doc(self, doc_id: str) -> None:
         self.col.delete(where={"doc_id": doc_id})
 
+    def get(self, ids: Sequence[str]) -> dict[str, dict]:
+        """{chunk_id: {"text", "meta"}} for the ids that exist."""
+        if not ids:
+            return {}
+        got = self.col.get(ids=list(ids), include=["documents", "metadatas"])
+        return {i: {"text": d, "meta": m} for i, d, m in zip(got["ids"], got["documents"], got["metadatas"])}
+
     def query(self, vector: Sequence[float], k: int, where: Optional[dict] = None) -> list[dict]:
         if self.col.count() == 0:
             return []
