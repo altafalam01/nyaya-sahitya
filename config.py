@@ -26,6 +26,9 @@ class Settings:
     bm25_candidates: int
     rerank_top: int
     anthropic_api_key: str
+    answer_model: str
+    answer_max_tokens: int
+    answer_top_k: int
     user_agent: str
     download_delay_seconds: float
 
@@ -51,6 +54,9 @@ def load_settings() -> Settings:
         bm25_candidates=int(os.getenv("BM25_CANDIDATES", "50")),
         rerank_top=int(os.getenv("RERANK_TOP", "20")),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+        answer_model=os.getenv("ANSWER_MODEL", "claude-sonnet-5-5"),
+        answer_max_tokens=int(os.getenv("ANSWER_MAX_TOKENS", "1500")),
+        answer_top_k=int(os.getenv("ANSWER_TOP_K", "6")),
         user_agent=os.getenv("USER_AGENT", "NyayaSahityaBot/0.1 (legal-research; non-commercial)"),
         download_delay_seconds=float(os.getenv("DOWNLOAD_DELAY_SECONDS", "5")),
     )
