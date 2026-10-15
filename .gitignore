@@ -9,3 +9,5 @@ data/chunks/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/chunks/.gitkeep
+data/index/*
+!data/index/.gitkeep

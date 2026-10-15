@@ -18,6 +18,9 @@ class Settings:
     raw_data_dir: Path
     processed_data_dir: Path
     chunks_data_dir: Path
+    index_dir: Path
+    embed_model: str
+    embed_batch_size: int
     anthropic_api_key: str
     user_agent: str
     download_delay_seconds: float
@@ -36,6 +39,9 @@ def load_settings() -> Settings:
         raw_data_dir=_path("RAW_DATA_DIR", "data/raw"),
         processed_data_dir=_path("PROCESSED_DATA_DIR", "data/processed"),
         chunks_data_dir=_path("CHUNKS_DATA_DIR", "data/chunks"),
+        index_dir=_path("CHROMA_DIR", "data/index"),
+        embed_model=os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-small"),
+        embed_batch_size=int(os.getenv("EMBED_BATCH_SIZE", "16")),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
         user_agent=os.getenv("USER_AGENT", "NyayaSahityaBot/0.1 (legal-research; non-commercial)"),
         download_delay_seconds=float(os.getenv("DOWNLOAD_DELAY_SECONDS", "5")),
