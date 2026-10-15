@@ -66,7 +66,7 @@ def test_robots_disallow_is_respected(tmp_path):
     src = get_source("bns_2023")
     host = "https://" + src.file_url.split("/")[2]
     responses = ok_site(src)
-    responses[host + "/robots.txt"] = FetchResult(200, b"User-agent: *\nDisallow: /bitstream/\n")
+    responses[host + "/robots.txt"] = FetchResult(200, b"User-agent: *\nDisallow: /uploads/\n")
     dl, site, _ = make(tmp_path, responses)
     out = dl.collect(src)
     assert out.status == MANUAL and "robots.txt" in out.detail
@@ -252,3 +252,68 @@ def test_cli_dry_run_doc_type_filter(capsys):
     assert collect.main(["--dry-run", "--doc-type", "judgment"]) == 0
     out = capsys.readouterr().out
     assert all(s.file_url in out for s in SC_JUDGMENTS) and "bns_2023" not in out
+
+
+# --- BNS (NCRB) and IPC (repealed) hand-placed files ---------------------------------
+
+def _place(tmp_path, src, data):
+    p = tmp_path / src.id / src.filename
+    p.parent.mkdir(parents=True)
+    p.write_bytes(data)
+    return p
+
+
+def _with_hash(src, data):
+    from dataclasses import replace
+    return replace(src, expected_sha256=hashlib.sha256(data).hexdigest())
+
+
+def test_ipc_is_registered_as_repealed_and_never_current_law():
+    ipc = get_source("ipc_1860")
+    assert ipc.act == "IPC_1860" and ipc.legal_status == "repealed" and ipc.repealed_on == "2024-07-01"
+    assert "never be presented as current law" in ipc.usage_note
+    assert ipc.url.startswith("https://www.indiacode.nic.in/") and len(ipc.expected_sha256) == 64
+
+
+def test_bns_points_at_ncrb_and_notes_correspondence_table():
+    bns = get_source("bns_2023")
+    assert bns.url == bns.file_url == "https://www.ncrb.gov.in/uploads/SankalanPortal/DownloadPDF/BNS2023.pdf"
+    assert bns.legal_status == "in_force" and bns.in_force_from == "2024-07-01"
+    assert "IPC-to-BNS correspondence table" in bns.content_note and "index" in bns.content_note
+
+
+def test_adoption_checks_hash_and_records_retrieval_date_and_legal_status(tmp_path):
+    src = _with_hash(get_source("ipc_1860"), PDF)
+    p = _place(tmp_path, src, PDF)
+    dl, site, _ = make(tmp_path, {})
+    out = dl.collect(src)
+    assert out.status == ADOPTED and site.calls == []
+    meta = json.loads(p.with_name(p.name + ".meta.json").read_text(encoding="utf-8"))
+    assert meta["date_fetched"] == "2026-09-21" and meta["method"] == "manual"
+    assert meta["legal_status"] == "repealed" and meta["act"] == "IPC_1860" and meta["hash_verified"] is True
+    assert meta["sha256"] == hashlib.sha256(PDF).hexdigest() == meta["expected_sha256"]
+
+
+def test_hash_mismatch_is_rejected_without_metadata(tmp_path):
+    src = get_source("ipc_1860")  # real expected hash; PDF fixture will not match
+    p = _place(tmp_path, src, PDF)
+    dl, _, _ = make(tmp_path, {})
+    out = dl.collect(src)
+    assert out.status == INVALID and "expected" in out.detail
+    assert not p.with_name(p.name + ".meta.json").exists()
+
+
+def test_automated_download_keeps_real_fetch_date_not_retrieved_on(tmp_path):
+    src = get_source("bns_2023")
+    dl, _, _ = make(tmp_path, ok_site(src))
+    out = dl.collect(src)
+    meta = json.loads(out.path.with_name(out.path.name + ".meta.json").read_text(encoding="utf-8"))
+    assert meta["method"] == "automated" and not meta["date_fetched"].startswith("2026-09-21")
+
+
+def test_registry_shows_legal_status_for_bns_and_ipc(tmp_path):
+    from ingestion.collect import write_registry
+    write_registry(tmp_path, SOURCES, [])
+    rows = {r["id"]: r for r in json.loads((tmp_path / "registry.json").read_text(encoding="utf-8"))["sources"]}
+    assert rows["ipc_1860"]["legal_status"] == "repealed" and rows["bns_2023"]["legal_status"] == "in_force"
+    assert "usage_note" not in rows["bnss_2023"]

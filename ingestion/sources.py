@@ -17,6 +17,13 @@ CONSTITUTION_TERMS = (
     "and Justice). Government works of this kind are published for public access; check "
     "the site's terms before redistributing."
 )
+NCRB_BNS_URL = "https://www.ncrb.gov.in/uploads/SankalanPortal/DownloadPDF/BNS2023.pdf"
+NCRB_TERMS = (
+    "Official Government of India publication hosted by the National Crime Records Bureau (NCRB), "
+    "an attached office of the Ministry of Home Affairs (Sankalan portal). Check the site's terms "
+    "before redistributing."
+)
+IPC_URL = "https://www.indiacode.nic.in/bitstream/123456789/4219/1/THE-INDIAN-PENAL-CODE-1860.pdf"
 
 
 @dataclass(frozen=True)
@@ -35,6 +42,21 @@ class Source:
     bucket_url: Optional[str] = None  # base URL of the mirror's bucket
     case_metadata: dict = field(default_factory=dict)  # fields taken from the mirror's metadata
     strict_pdf: bool = False  # also require the %%EOF trailer (catches truncated downloads)
+    # Legal standing and hand-placed-file provenance (all optional).
+    act: Optional[str] = None  # stable act key for old-to-new mapping, e.g. IPC_1860
+    legal_status: Optional[str] = None  # in_force | repealed
+    in_force_from: Optional[str] = None  # ISO date
+    repealed_on: Optional[str] = None  # ISO date
+    usage_note: Optional[str] = None  # how the text may / may not be used downstream
+    content_note: Optional[str] = None  # what else the file contains
+    retrieved_on: Optional[str] = None  # ISO date the file was fetched by the user (manual placement)
+    expected_sha256: Optional[str] = None  # user-verified hash; a placed file must match it
+
+    def legal_fields(self) -> dict:
+        """Non-empty legal/provenance extras, shared by the registry row and the .meta.json."""
+        keys = ("act", "legal_status", "in_force_from", "repealed_on", "usage_note",
+                "content_note", "retrieved_on", "expected_sha256")
+        return {k: getattr(self, k) for k in keys if getattr(self, k) is not None}
 
 
 OFFICIAL_SOURCES: tuple[Source, ...] = (
@@ -52,11 +74,18 @@ OFFICIAL_SOURCES: tuple[Source, ...] = (
         id="bns_2023",
         name="Bharatiya Nyaya Sanhita, 2023 (Act 45 of 2023)",
         doc_type="act",
-        url="https://www.indiacode.nic.in/handle/123456789/20062",
-        file_url="https://www.indiacode.nic.in/bitstream/123456789/20062/1/a202345.pdf",
+        url=NCRB_BNS_URL,
+        file_url=NCRB_BNS_URL,
         filename="bns_2023_a202345.pdf",
-        licence_note=INDIA_CODE_TERMS,
-        url_note="Handle and PDF both appeared in search results; site returned 403 to us.",
+        licence_note=NCRB_TERMS,
+        url_note="Published by NCRB (an attached office of the Ministry of Home Affairs); India Code "
+                 "was unreachable (403). File fetched by the user on 2026-09-21, not by this project.",
+        act="BNS_2023",
+        legal_status="in_force",
+        in_force_from="2024-07-01",
+        content_note="The PDF also contains an index and an IPC-to-BNS correspondence table.",
+        retrieved_on="2026-09-21",
+        expected_sha256="a83f12a93e32c9e0b39a85f75850a448dc4682b1b44b2d6bd680165bb9931549",
     ),
     Source(
         id="bnss_2023",
@@ -77,6 +106,23 @@ OFFICIAL_SOURCES: tuple[Source, ...] = (
         filename="bsa_2023_aa202347.pdf",
         licence_note=INDIA_CODE_TERMS,
         url_note="Handle and PDF both appeared in search results; site returned 403 to us.",
+    ),
+    Source(
+        id="ipc_1860",
+        name="The Indian Penal Code, 1860 (Act 45 of 1860)",
+        doc_type="act",
+        url=IPC_URL,
+        file_url=IPC_URL,
+        filename="ipc_1860_bare_act.pdf",
+        licence_note=INDIA_CODE_TERMS,
+        url_note="URL supplied by the user, who fetched the file on 2026-09-21; not re-fetched by this project.",
+        act="IPC_1860",
+        legal_status="repealed",
+        repealed_on="2024-07-01",
+        usage_note="REPEALED on 1 July 2024 (replaced by the Bharatiya Nyaya Sanhita, 2023). Kept only "
+                   "for old-to-new section mapping; must never be presented as current law.",
+        retrieved_on="2026-09-21",
+        expected_sha256="ef8945c5d1b02904da67959e245b87bd5751ed5563d03ab0079758909f145309",
     ),
 )
 

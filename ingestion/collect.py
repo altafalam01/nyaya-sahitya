@@ -36,6 +36,7 @@ def write_registry(raw_dir, sources, outcomes) -> None:
             "file_url": s.file_url, "licence_note": s.licence_note,
             "expected_path": str(path), "status": status, "date_fetched": fetched,
         }
+        row.update(s.legal_fields())
         if s.origin != "official":
             row.update({"origin": s.origin, "mirror_of": s.mirror_of, "bucket_url": s.bucket_url,
                         "case_metadata": s.case_metadata})

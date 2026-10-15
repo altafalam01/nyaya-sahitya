@@ -148,7 +148,7 @@ class Downloader:
             "file_url": source.file_url,
             "licence_note": source.licence_note,
             "url_note": source.url_note,
-            "date_fetched": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "date_fetched": (source.retrieved_on if method == "manual" else None) or datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "method": method,  # automated | manual
             "filename": path.name,
             "size_bytes": len(content),
@@ -157,6 +157,10 @@ class Downloader:
             "content_type": content_type,
             "user_agent": self.user_agent if method == "automated" else None,
         }
+        meta.update(source.legal_fields())
+        if source.retrieved_on and method == "manual":
+            meta["date_registered"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            meta["hash_verified"] = bool(source.expected_sha256)  # adoption fails on a mismatch
         if source.origin != "official":
             meta.update({
                 "origin": source.origin,  # third_party_mirror
@@ -181,6 +185,10 @@ class Downloader:
             if not ok:
                 return Outcome(source.id, INVALID, f"{path} is not a valid document: {why}. "
                                f"Replace it with the real PDF.", path)
+            digest = hashlib.sha256(data).hexdigest()
+            if source.expected_sha256 and digest != source.expected_sha256:
+                return Outcome(source.id, INVALID, f"{path} has SHA-256 {digest}, expected "
+                               f"{source.expected_sha256}. Not registered.", path)
             self._write_metadata(source, path, method="manual", content=data,
                                  http_status=None, content_type=why)
             return Outcome(source.id, ADOPTED, "manually placed file; metadata written", path)
