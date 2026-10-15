@@ -17,7 +17,7 @@ Supreme Court judgments.
 1. **Ingestion** (`ingestion/`): collect, parse and chunk documents by section/article/paragraph.
 2. **Retrieval** (`retrieval/`): dense (multilingual-e5) + BM25, fused with RRF, reranked by a cross-encoder.
    A query pre-processor recognises references like "Section 420 IPC" and maps IPC and BNS sections.
-3. **Generation** (`generation/`): Claude answers only from the retrieved sources. A citation validator removes
+3. **Generation** (`generation/`): an LLM (Gemini free tier, local Ollama, or Claude) answers only from the retrieved sources. A citation validator removes
    any sentence that is uncited or cites something not retrieved.
 4. **API** (`api/`): FastAPI, `POST /ask` and `GET /health`.
 5. **UI** (`ui/`): Streamlit chat in English and Hindi, with expandable sources.
@@ -28,9 +28,12 @@ Supreme Court judgments.
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env      # then set ANTHROPIC_API_KEY in .env (never commit it)
+copy .env.example .env      # then set GEMINI_API_KEY in .env (never commit it)
 pytest
 ```
+
+LLM options (`LLM_PROVIDER` in `.env`): `gemini` (free key from https://aistudio.google.com/apikey), `ollama`
+(free, local, no key) or `anthropic` (paid).
 
 The source documents and the search index are not stored in this repository (`data/` is git-ignored).
 Build them with the ingestion and indexing modules before running the app.

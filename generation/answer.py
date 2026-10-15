@@ -50,9 +50,9 @@ def answer_question(question: str, llm: Optional[LLM] = None, k: Optional[int] =
                     **filters) -> Answer:
     """Full pipeline: hybrid retrieval, then generate_answer."""
     from retrieval.hybrid import hybrid_search  # heavy imports kept out of module load
-    from .llm import AnthropicLLM
+    from .llm import make_llm
     hits = hybrid_search(question, k or settings.answer_top_k, **filters)
-    return generate_answer(question, hits, llm or AnthropicLLM(), lang)
+    return generate_answer(question, hits, llm or make_llm(), lang)
 
 
 def main(argv=None) -> int:

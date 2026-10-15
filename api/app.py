@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from config import settings
 from generation.answer import Answer, answer_question
+from generation.llm import llm_configured
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def create_app(answerer: Optional[Answerer] = None) -> FastAPI:
 
     @app.get("/health")
     def health() -> dict:
-        return {"status": "ok", "app": settings.app_name, "llm_configured": bool(settings.anthropic_api_key)}
+        return {"status": "ok", "app": settings.app_name, "llm_configured": llm_configured()}
 
     @app.post("/ask", response_model=AskResponse)
     def ask(req: AskRequest) -> AskResponse:

@@ -26,6 +26,11 @@ class Settings:
     bm25_candidates: int
     rerank_top: int
     anthropic_api_key: str
+    llm_provider: str
+    gemini_api_key: str
+    gemini_model: str
+    ollama_url: str
+    ollama_model: str
     answer_model: str
     answer_max_tokens: int
     answer_top_k: int
@@ -56,6 +61,11 @@ def load_settings() -> Settings:
         bm25_candidates=int(os.getenv("BM25_CANDIDATES", "50")),
         rerank_top=int(os.getenv("RERANK_TOP", "20")),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+        llm_provider=os.getenv("LLM_PROVIDER", "gemini"),
+        gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        ollama_url=os.getenv("OLLAMA_URL", "http://localhost:11434"),
+        ollama_model=os.getenv("OLLAMA_MODEL", "qwen2.5:7b"),
         answer_model=os.getenv("ANSWER_MODEL", "claude-sonnet-5-5"),
         answer_max_tokens=int(os.getenv("ANSWER_MAX_TOKENS", "1500")),
         answer_top_k=int(os.getenv("ANSWER_TOP_K", "6")),
