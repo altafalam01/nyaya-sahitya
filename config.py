@@ -30,6 +30,7 @@ class Settings:
     answer_max_tokens: int
     answer_top_k: int
     cors_origins: list[str]
+    api_url: str
     user_agent: str
     download_delay_seconds: float
 
@@ -59,6 +60,7 @@ def load_settings() -> Settings:
         answer_max_tokens=int(os.getenv("ANSWER_MAX_TOKENS", "1500")),
         answer_top_k=int(os.getenv("ANSWER_TOP_K", "6")),
         cors_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:8501,http://localhost:3000").split(",") if o.strip()],
+        api_url=os.getenv("API_URL", "http://localhost:8000"),
         user_agent=os.getenv("USER_AGENT", "NyayaSahityaBot/0.1 (legal-research; non-commercial)"),
         download_delay_seconds=float(os.getenv("DOWNLOAD_DELAY_SECONDS", "5")),
     )
