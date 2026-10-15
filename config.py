@@ -17,6 +17,7 @@ class Settings:
     log_level: str
     raw_data_dir: Path
     processed_data_dir: Path
+    chunks_data_dir: Path
     anthropic_api_key: str
     user_agent: str
     download_delay_seconds: float
@@ -34,6 +35,7 @@ def load_settings() -> Settings:
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
         raw_data_dir=_path("RAW_DATA_DIR", "data/raw"),
         processed_data_dir=_path("PROCESSED_DATA_DIR", "data/processed"),
+        chunks_data_dir=_path("CHUNKS_DATA_DIR", "data/chunks"),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
         user_agent=os.getenv("USER_AGENT", "NyayaSahityaBot/0.1 (legal-research; non-commercial)"),
         download_delay_seconds=float(os.getenv("DOWNLOAD_DELAY_SECONDS", "5")),
