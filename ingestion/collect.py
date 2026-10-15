@@ -1,4 +1,4 @@
-"""CLI: python -m ingestion.collect [--dry-run] [--only ID ...]
+"""CLI: python -m ingestion.collect [--dry-run] [--only ID ...] [--doc-type TYPE]
 
 --dry-run prints each URL without touching the network, so they can be reviewed first.
 Always writes data/raw/registry.json summarising every source and its current status.
@@ -6,24 +6,40 @@ Always writes data/raw/registry.json summarising every source and its current st
 import argparse
 import json
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
 
 from config import settings, setup_logging
 
-from .downloader import MANUAL, Downloader, manual_instructions
+from .downloader import INVALID, MANUAL, Downloader, manual_instructions
 from .sources import SOURCES, Source, get_source
 
 
+def _date_fetched(path: Path) -> Optional[str]:
+    meta = path.with_name(path.name + ".meta.json")
+    if not meta.exists():
+        return None
+    return json.loads(meta.read_text(encoding="utf-8")).get("date_fetched")
+
+
 def write_registry(raw_dir, sources, outcomes) -> None:
+    """Always lists every registered source; sources not run now are reported from what is on disk."""
     by_id = {o.source_id: o for o in outcomes}
     rows = []
     for s in sources:
         o = by_id.get(s.id)
-        rows.append({
+        path = raw_dir / s.id / s.filename
+        fetched = _date_fetched(path)
+        status = o.status if o else ("present" if fetched else "not_run")
+        row = {
             "id": s.id, "name": s.name, "doc_type": s.doc_type, "url": s.url,
             "file_url": s.file_url, "licence_note": s.licence_note,
-            "expected_path": str((raw_dir / s.id / s.filename)),
-            "status": o.status if o else "not_run",
-        })
+            "expected_path": str(path), "status": status, "date_fetched": fetched,
+        }
+        if s.origin != "official":
+            row.update({"origin": s.origin, "mirror_of": s.mirror_of, "bucket_url": s.bucket_url,
+                        "case_metadata": s.case_metadata})
+        rows.append(row)
     raw_dir.mkdir(parents=True, exist_ok=True)
     (raw_dir / "registry.json").write_text(
         json.dumps({"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -34,10 +50,13 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--only", nargs="*", metavar="ID")
+    ap.add_argument("--doc-type", metavar="TYPE", help="only sources of this type, e.g. judgment")
     args = ap.parse_args(argv)
     setup_logging()
 
     sources: list[Source] = [get_source(i) for i in args.only] if args.only else list(SOURCES)
+    if args.doc_type:
+        sources = [s for s in sources if s.doc_type == args.doc_type]
     if args.dry_run:
         for s in sources:
             print(f"{s.id}\n  page: {s.url}\n  file: {s.file_url or '(none verified)'}\n  note: {s.url_note}")
@@ -49,8 +68,8 @@ def main(argv=None) -> int:
         o = dl.collect(s)
         outcomes.append(o)
         print(f"[{o.status}] {s.id}: {o.detail}")
-    write_registry(settings.raw_data_dir, sources, outcomes)
-    return 1 if any(o.status == MANUAL for o in outcomes) else 0
+    write_registry(settings.raw_data_dir, SOURCES, outcomes)
+    return 1 if any(o.status in (MANUAL, INVALID) for o in outcomes) else 0
 
 
 if __name__ == "__main__":

@@ -23,6 +23,25 @@ from .sources import Source
 log = logging.getLogger(__name__)
 
 DOWNLOADED, ADOPTED, PRESENT, MANUAL = "downloaded", "adopted", "present", "manual_required"
+INVALID = "invalid_file"
+MIN_DOC_BYTES = 20_000  # real Act/Constitution PDFs are hundreds of KB; error pages are ~1 KB
+
+
+def validate_document(content: bytes, strict: bool = False) -> tuple[bool, str]:
+    """Return (ok, file_type_or_reason). Accepts PDFs only; rejects HTML/error pages and tiny files.
+
+    strict additionally requires the %%EOF trailer, which a truncated download lacks.
+    """
+    head = content[:1024].lstrip().lower()
+    if head.startswith((b"<!doctype html", b"<html", b"<?xml")) or b"<html" in head:
+        return False, "HTML page, not a document"
+    if not content.startswith(b"%PDF-"):
+        return False, "does not start with %PDF- header"
+    if len(content) < MIN_DOC_BYTES:
+        return False, f"only {len(content)} bytes (minimum {MIN_DOC_BYTES})"
+    if strict and b"%%EOF" not in content[-2048:]:
+        return False, "no %%EOF trailer (file looks truncated)"
+    return True, "application/pdf"
 
 
 @dataclass(frozen=True)
@@ -138,6 +157,13 @@ class Downloader:
             "content_type": content_type,
             "user_agent": self.user_agent if method == "automated" else None,
         }
+        if source.origin != "official":
+            meta.update({
+                "origin": source.origin,  # third_party_mirror
+                "mirror_of": source.mirror_of,
+                "bucket_url": source.bucket_url,
+                "case_metadata": source.case_metadata,
+            })
         meta_path = path.with_name(path.name + ".meta.json")
         meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -150,8 +176,13 @@ class Downloader:
         if path.exists():
             if meta_path.exists():
                 return Outcome(source.id, PRESENT, "file and metadata already exist", path)
-            self._write_metadata(source, path, method="manual", content=path.read_bytes(),
-                                 http_status=None, content_type=None)
+            data = path.read_bytes()
+            ok, why = validate_document(data, source.strict_pdf)
+            if not ok:
+                return Outcome(source.id, INVALID, f"{path} is not a valid document: {why}. "
+                               f"Replace it with the real PDF.", path)
+            self._write_metadata(source, path, method="manual", content=data,
+                                 http_status=None, content_type=why)
             return Outcome(source.id, ADOPTED, "manually placed file; metadata written", path)
 
         manual = manual_instructions(source, self.raw_dir)
@@ -166,6 +197,10 @@ class Downloader:
         res = self._fetch(source.file_url, self.user_agent)
         if res.status != 200 or not res.content:
             return Outcome(source.id, MANUAL, f"server answered HTTP {res.status}.\n{manual}")
+
+        ok, why = validate_document(res.content, source.strict_pdf)
+        if not ok:
+            return Outcome(source.id, MANUAL, f"server sent something that is not a document ({why}).\n{manual}")
 
         dest_dir.mkdir(parents=True, exist_ok=True)
         path.write_bytes(res.content)  # raw bytes, unmodified
